@@ -1,0 +1,5 @@
+build/
+mnist_png/
+.vscode/
+*.o
+*.out

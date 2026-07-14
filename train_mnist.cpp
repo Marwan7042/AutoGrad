@@ -1,0 +1,207 @@
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#include "nn.h"
+#include "optim.h"
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <filesystem>
+#include <cmath>
+
+using namespace mstd;
+namespace fs = std::filesystem;
+
+// A real Computer Vision MLP!
+class MNISTModel {
+public:
+    nn::Dense<float> layer1;
+    nn::Dense<float> layer2;
+
+    MNISTModel() : 
+        layer1(784, 64), // 28x28 pixels = 784 inputs!
+        layer2(64, 10)   // 10 possible digits (0-9)
+    {}
+
+    Tensor<float> operator()(const Tensor<float>& x) {
+        // x is sent to GPU, multiplied, and brought back to CPU automatically
+        Tensor<float> h = layer1(x).relu(); 
+        
+        // Push the hidden layer back to the GPU for the next Matrix Multiplication!
+        h = h.to("cuda"); 
+        
+        return layer2(h);
+    }
+
+    vector<Tensor<float>*> parameters() {
+        vector<Tensor<float>*> params(4);
+        auto p1 = layer1.parameters();
+        auto p2 = layer2.parameters();
+        params[0] = p1[0]; params[1] = p1[1];
+        params[2] = p2[0]; params[3] = p2[1];
+        return params;
+    }
+};
+
+struct Sample {
+    Tensor<float> image;
+    Tensor<float> target;
+    std::string   filepath;
+    int           label;
+};
+
+std::vector<float> softmax_vec(const Tensor<float>& logits) {
+    float max_val = (*logits.data)[0];
+    for (int i = 1; i < 10; i++) if ((*logits.data)[i] > max_val) max_val = (*logits.data)[i];
+    std::vector<float> probs(10);
+    float sum = 0.0f;
+    for (int i = 0; i < 10; i++) { probs[i] = std::exp((*logits.data)[i] - max_val); sum += probs[i]; }
+    for (int i = 0; i < 10; i++) probs[i] /= sum;
+    return probs;
+}
+
+// Function to read an actual .png file and turn it into a Tensor!
+Sample load_image(const std::string& filepath, int label) {
+    int width, height, channels;
+    // Read the PNG pixels!
+    unsigned char *img = stbi_load(filepath.c_str(), &width, &height, &channels, 1);
+    if (img == nullptr) {
+        throw std::runtime_error("Error in loading the image\n");
+    }
+
+    vector<size_t> img_shape(2); img_shape[0] = 1; img_shape[1] = 784;
+    Tensor<float> X(img_shape);
+    for (int i = 0; i < 784; i++) {
+        // Normalize pixel values from [0, 255] to [0.0, 1.0] for the neural network
+        X.data->operator[](i) = (float)img[i] / 255.0f;
+    }
+    stbi_image_free(img);
+
+    // One-hot encode the target label (e.g., if label is 3, make the 3rd index 1.0 and rest 0.0)
+    vector<size_t> y_shape(2); y_shape[0] = 1; y_shape[1] = 10;
+    Tensor<float> Y(y_shape);
+    for (int i = 0; i < 10; i++) {
+        Y.data->operator[](i) = (i == label) ? 1.0f : 0.0f;
+    }
+
+    return {X, Y, filepath, label};
+}
+
+int main() {
+    std::cout << "Scanning MNIST PNG Directory..." << std::endl;
+    
+    std::vector<Sample> dataset; // (Using standard vector to hold the dataset easily)
+    std::string base_dir = "../mnist_png/training/"; // Path to the images we downloaded
+    
+    // Load 50 images of each digit (500 total) so we can train fast without batching yet
+    for (int label = 0; label < 10; label++) {
+        std::string dir_path = base_dir + std::to_string(label);
+        int count = 0;
+        for (const auto & entry : fs::directory_iterator(dir_path)) {
+            if (count >= 50) break; 
+            dataset.push_back(load_image(entry.path().string(), label));
+            count++;
+        }
+    }
+    
+    std::cout << "Loaded " << dataset.size() << " actual PNG images into Tensors!" << std::endl;
+    std::cout << "Building MLP (784 -> 64 -> 10) to learn Computer Vision..." << std::endl;
+    
+    MNISTModel model;
+    
+    // Shoot the Neural Network weights across the PCIe bus into the RTX 5050's VRAM!
+    std::cout << "Transferring Weights to RTX 5050 (VRAM)..." << std::endl;
+    model.layer1.weight = model.layer1.weight.to("cuda");
+    model.layer2.weight = model.layer2.weight.to("cuda");
+    
+    float learning_rate = 0.1f;
+    optim::SGD<float> optimizer(model.parameters(), learning_rate);
+    nn::CrossEntropyLoss<float> criterion;
+
+    std::vector<float> history_loss, history_acc;
+
+    for (int epoch = 0; epoch <= 30; epoch++) {
+        float epoch_loss = 0.0f;
+        int correct = 0;
+        
+        for (size_t i = 0; i < dataset.size(); i++) {
+            // --- 1. Forward Pass ---
+            // Send the image to the GPU!
+            Tensor<float> X_cuda = dataset[i].image.to("cuda");
+            Tensor<float> Y_pred = model(X_cuda);
+            
+            // --- 2. Calculate Loss ---
+            Tensor<float> Loss = criterion(Y_pred, dataset[i].target);
+            
+            // Check if the network guessed right!
+            int max_idx = 0; float max_val = -9999.0f; int target_idx = 0;
+            for (int j = 0; j < 10; j++) {
+                if ((*Y_pred.data)[j] > max_val) { max_val = (*Y_pred.data)[j]; max_idx = j; }
+                if ((*dataset[i].target.data)[j] == 1.0f) { target_idx = j; }
+            }
+            if (max_idx == target_idx) correct++;
+            
+            vector<size_t> idx00(2); idx00[0] = 0; idx00[1] = 0;
+            epoch_loss += Loss(idx00);
+            
+            // --- 3. Zero Gradients ---
+            optimizer.zero_grad();
+            
+            // --- 4. Backward Pass ---
+            Loss.backward();
+            
+            // --- 5. Optimizer Step ---
+            optimizer.step();
+        }
+        
+        float avg_loss = epoch_loss / dataset.size();
+        float accuracy = (float)correct / dataset.size() * 100.0f;
+        history_loss.push_back(avg_loss);
+        history_acc.push_back(accuracy);
+        
+        std::cout << "Epoch " << epoch << " | Loss: " << avg_loss 
+                  << " | Accuracy: " << accuracy << "%" << std::endl;
+    }
+    
+    // ── Generate results.json ─────────────────────────────────────────────────
+    std::cout << "\nGenerating results.json for the demo..." << std::endl;
+    fs::create_directories("../demo");
+    
+    std::ofstream json_file("../demo/results.json");
+    json_file << "{\n";
+    
+    json_file << "  \"history\": {\n    \"loss\": [";
+    for (size_t i = 0; i < history_loss.size(); i++)
+        json_file << history_loss[i] << (i+1 < history_loss.size() ? "," : "");
+    json_file << "],\n    \"accuracy\": [";
+    for (size_t i = 0; i < history_acc.size(); i++)
+        json_file << history_acc[i] << (i+1 < history_acc.size() ? "," : "");
+    json_file << "]\n  },\n";
+    
+    json_file << "  \"samples\": [\n";
+    for (size_t i = 0; i < dataset.size(); i++) {
+        Tensor<float> X_cuda = dataset[i].image.to("cuda");
+        Tensor<float> Y_pred = model(X_cuda);
+        auto probs = softmax_vec(Y_pred);
+        
+        int pred_label = 0; float max_p = probs[0];
+        for (int j = 1; j < 10; j++) if (probs[j] > max_p) { max_p = probs[j]; pred_label = j; }
+        
+        json_file << "    {";
+        json_file << "\"path\":\"" << dataset[i].filepath << "\",";
+        json_file << "\"label\":" << dataset[i].label << ",";
+        json_file << "\"prediction\":" << pred_label << ",";
+        json_file << "\"confidence\":" << max_p << ",";
+        json_file << "\"probs\":[";
+        for (int j = 0; j < 10; j++)
+            json_file << probs[j] << (j < 9 ? "," : "");
+        json_file << "]}";
+        if (i + 1 < dataset.size()) json_file << ",";
+        json_file << "\n";
+    }
+    json_file << "  ]\n}\n";
+    json_file.close();
+    
+    std::cout << "Done! Open demo/index.html to view the results." << std::endl;
+    return 0;
+}
