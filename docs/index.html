@@ -474,7 +474,7 @@
     <div class="stat-label">Final Loss</div>
   </div>
   <div class="stat-card">
-    <div class="stat-value" style="color:#a78bfa">50,816</div>
+    <div class="stat-value" style="color:#a78bfa">407,050</div>
     <div class="stat-label">Parameters</div>
   </div>
   <div class="stat-card">
@@ -482,7 +482,7 @@
     <div class="stat-label">Epochs</div>
   </div>
   <div class="stat-card">
-    <div class="stat-value" style="color:#f87171">~200KB</div>
+    <div class="stat-value" style="color:#f87171">~1.6MB</div>
     <div class="stat-label">VRAM Used</div>
   </div>
 </div>
@@ -504,19 +504,19 @@
       <div class="arch-node node-dense">
         <div class="node-label">Layer 1</div>
         <div class="node-name">Dense</div>
-        <div class="node-shape">[784 → 64]</div>
+        <div class="node-shape">[784 → 512]</div>
       </div>
       <div class="arch-arrow"><span>→</span><small>ReLU</small></div>
       <div class="arch-node node-relu">
         <div class="node-label">Activation</div>
         <div class="node-name">ReLU</div>
-        <div class="node-shape">[1 × 64]</div>
+        <div class="node-shape">[1 × 512]</div>
       </div>
       <div class="arch-arrow"><span>→</span><small>matmul</small></div>
       <div class="arch-node node-dense">
         <div class="node-label">Layer 2</div>
         <div class="node-name">Dense</div>
-        <div class="node-shape">[64 → 10]</div>
+        <div class="node-shape">[512 → 10]</div>
       </div>
       <div class="arch-arrow"><span>→</span><small>softmax</small></div>
       <div class="arch-node node-output">
