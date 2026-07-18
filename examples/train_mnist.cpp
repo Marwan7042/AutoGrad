@@ -9,7 +9,7 @@
 #include <filesystem>
 #include <cmath>
 
-using namespace mstd;
+using namespace vc;
 namespace fs = std::filesystem;
 
 // A real Computer Vision MLP!

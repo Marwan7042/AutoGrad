@@ -9,7 +9,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
-namespace mstd{
+namespace vc{
     template <typename T> class AutogradNode; 
     template <typename T> struct GPUData;
     template <typename T> struct AutogradContext;
@@ -18,9 +18,9 @@ namespace mstd{
     template <typename T>
     class Tensor {
     public:
-        mstd::vector<size_t> _shape;
-        mstd::vector<size_t> _strides;
-        std::shared_ptr<mstd::vector<T>> data;
+        vc::vector<size_t> _shape;
+        vc::vector<size_t> _strides;
+        std::shared_ptr<vc::vector<T>> data;
         std::shared_ptr<AutogradContext<T>> ctx;
         
         bool is_cuda = false;
@@ -30,16 +30,16 @@ namespace mstd{
         Tensor();
 
         // Parameterized internal constructor: Used to construct a tensor from pre-existing data, context, and GPU pointers
-        Tensor(mstd::vector<size_t> s, mstd::vector<size_t> st, std::shared_ptr<mstd::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda=false, std::shared_ptr<GPUData<T>> gd=nullptr);
+        Tensor(vc::vector<size_t> s, vc::vector<size_t> st, std::shared_ptr<vc::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda=false, std::shared_ptr<GPUData<T>> gd=nullptr);
 
         // Shape constructor: Allocates memory for a tensor of the given shape and initializes it with zeros
-        Tensor(mstd::vector<size_t> shape);
+        Tensor(vc::vector<size_t> shape);
 
         // Transfers the tensor's memory to the specified device (e.g., "cuda" or "cpu"). Returns a new tensor on that device.
         Tensor<T> to(const std::string& device) const;
 
         // Accesses an element in the tensor by its multidimensional index. Returns a reference to the element.
-        T& operator()(const mstd::vector<size_t>& dims);
+        T& operator()(const vc::vector<size_t>& dims);
         
         // Returns a new tensor that represents the transposed version of this tensor (swaps the last two dimensions).
         Tensor<T> transpose() const;    
@@ -88,7 +88,7 @@ namespace mstd{
     class AutogradNode {
     public:
         virtual void backward() = 0;
-        virtual mstd::vector<Tensor<T>> get_parents() = 0;
+        virtual vc::vector<Tensor<T>> get_parents() = 0;
         virtual ~AutogradNode() = default;
     };
     
@@ -101,8 +101,8 @@ namespace mstd{
     public:
         AddNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out(out) {}
 
-        mstd::vector<Tensor<T>> get_parents() override {
-            mstd::vector<Tensor<T>> parents(2);
+        vc::vector<Tensor<T>> get_parents() override {
+            vc::vector<Tensor<T>> parents(2);
             parents[0] = a;
             parents[1] = b;
             return parents;
@@ -129,8 +129,8 @@ namespace mstd{
     public:
         SubNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out(out) {}
 
-        mstd::vector<Tensor<T>> get_parents() override {
-            mstd::vector<Tensor<T>> parents(2);
+        vc::vector<Tensor<T>> get_parents() override {
+            vc::vector<Tensor<T>> parents(2);
             parents[0] = a;
             parents[1] = b;
             return parents;
@@ -157,8 +157,8 @@ namespace mstd{
     public:
         MulNode(Tensor<T> a, Tensor<T> b, Tensor<T> out) : a(a), b(b), out(out) {}
 
-        mstd::vector<Tensor<T>> get_parents() override {
-            mstd::vector<Tensor<T>> parents(2);
+        vc::vector<Tensor<T>> get_parents() override {
+            vc::vector<Tensor<T>> parents(2);
             parents[0] = a;
             parents[1] = b;
             return parents;
@@ -187,8 +187,8 @@ namespace mstd{
     public:
         ReLU(Tensor<T> a, Tensor<T> out) : a(a), out(out) {}
 
-        mstd::vector<Tensor<T>> get_parents() override {
-            mstd::vector<Tensor<T>> parents(1);
+        vc::vector<Tensor<T>> get_parents() override {
+            vc::vector<Tensor<T>> parents(1);
             parents[0] = a;
             return parents;
         }

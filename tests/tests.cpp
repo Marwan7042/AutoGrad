@@ -4,8 +4,8 @@
 #include <cmath>
 
 // Helper to fill a 2D tensor easily
-void fill_tensor(mstd::Tensor<float>& t, float val, size_t rows, size_t cols) {
-    mstd::vector<size_t> d(2);
+void fill_tensor(vc::Tensor<float>& t, float val, size_t rows, size_t cols) {
+    vc::vector<size_t> d(2);
     for (size_t i = 0; i < rows; i++) {
         for (size_t j = 0; j < cols; j++) {
             d[0] = i; d[1] = j;
@@ -15,8 +15,8 @@ void fill_tensor(mstd::Tensor<float>& t, float val, size_t rows, size_t cols) {
 }
 
 // Helper to check a 2D tensor's values
-void assert_tensor_val(mstd::Tensor<float>& t, float expected, size_t rows, size_t cols) {
-    mstd::vector<size_t> d(2);
+void assert_tensor_val(vc::Tensor<float>& t, float expected, size_t rows, size_t cols) {
+    vc::vector<size_t> d(2);
     for (size_t i = 0; i < rows; i++) {
         for (size_t j = 0; j < cols; j++) {
             d[0] = i; d[1] = j;
@@ -30,48 +30,48 @@ void assert_tensor_val(mstd::Tensor<float>& t, float expected, size_t rows, size
 }
 
 void test_forward_add() {
-    mstd::vector<size_t> shape(2);
+    vc::vector<size_t> shape(2);
     shape[0] = 2; shape[1] = 2;
     
-    mstd::Tensor<float> A(shape);
-    mstd::Tensor<float> B(shape);
+    vc::Tensor<float> A(shape);
+    vc::Tensor<float> B(shape);
     
     fill_tensor(A, 2.0f, 2, 2);
     fill_tensor(B, 3.0f, 2, 2);
     
-    mstd::Tensor<float> C = A + B;
+    vc::Tensor<float> C = A + B;
     assert_tensor_val(C, 5.0f, 2, 2);
     std::cout << "[PASS] Forward Addition" << std::endl;
 }
 
 void test_forward_matmul() {
-    mstd::vector<size_t> shape(2);
+    vc::vector<size_t> shape(2);
     shape[0] = 2; shape[1] = 2;
     
-    mstd::Tensor<float> A(shape);
-    mstd::Tensor<float> B(shape);
+    vc::Tensor<float> A(shape);
+    vc::Tensor<float> B(shape);
     
     fill_tensor(A, 2.0f, 2, 2); // [[2, 2], [2, 2]]
     fill_tensor(B, 3.0f, 2, 2); // [[3, 3], [3, 3]]
     
-    mstd::Tensor<float> C = A * B;
+    vc::Tensor<float> C = A * B;
     // 2*3 + 2*3 = 12
     assert_tensor_val(C, 12.0f, 2, 2);
     std::cout << "[PASS] Forward Matrix Multiplication (OpenBLAS)" << std::endl;
 }
 
 void test_autograd_add() {
-    mstd::vector<size_t> shape(2);
+    vc::vector<size_t> shape(2);
     shape[0] = 2; shape[1] = 2;
     
-    mstd::Tensor<float> A(shape);
-    mstd::Tensor<float> B(shape);
+    vc::Tensor<float> A(shape);
+    vc::Tensor<float> B(shape);
     A.ctx->requires_grad = true; // Track gradients!
     
     fill_tensor(A, 2.0f, 2, 2);
     fill_tensor(B, 3.0f, 2, 2);
     
-    mstd::Tensor<float> C = A + B;
+    vc::Tensor<float> C = A + B;
     C.backward();
     
     // Derivative of addition is 1
@@ -80,12 +80,12 @@ void test_autograd_add() {
 }
 
 void test_autograd_complex() {
-    mstd::vector<size_t> shape(2);
+    vc::vector<size_t> shape(2);
     shape[0] = 2; shape[1] = 2;
     
-    mstd::Tensor<float> A(shape);
-    mstd::Tensor<float> B(shape);
-    mstd::Tensor<float> C(shape);
+    vc::Tensor<float> A(shape);
+    vc::Tensor<float> B(shape);
+    vc::Tensor<float> C(shape);
     
     A.ctx->requires_grad = true;
     B.ctx->requires_grad = true;
@@ -95,8 +95,8 @@ void test_autograd_complex() {
     fill_tensor(C, 4.0f, 2, 2);
     
     // D = (A * B) + C
-    mstd::Tensor<float> M = A * B;
-    mstd::Tensor<float> D = M + C;
+    vc::Tensor<float> M = A * B;
+    vc::Tensor<float> D = M + C;
     
     D.backward();
     

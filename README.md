@@ -5,7 +5,7 @@ Includes **CUDA / cuBLAS** integration to offload matrix multiplications across 
 
 ## What's Included
 
-* `mstd::vector` - Custom STL implementation 
+* `vc::vector` - Custom STL implementation 
 * `Tensor<T>` - N-dimensional array with strides, zero-copy transpose, and `.to("cuda")`
 * **Autograd Engine** - Forward tracking and reverse-mode topological sort differentiation
 * `nn::Dense`, `nn::ReLU` - Modular network layers

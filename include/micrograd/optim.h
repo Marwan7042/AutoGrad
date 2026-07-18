@@ -3,15 +3,15 @@
 
 #include "Tensor.h"
 
-namespace mstd {
+namespace vc {
     namespace optim {
         template <typename T>
         class SGD {
         private:
-            mstd::vector<Tensor<T>*> parameters;
+            vc::vector<Tensor<T>*> parameters;
             float lr;
         public:
-            SGD(mstd::vector<Tensor<T>*> params, float learning_rate) 
+            SGD(vc::vector<Tensor<T>*> params, float learning_rate) 
                 : parameters(params), lr(learning_rate) {}
 
             // Resets all the gradients to 0 so they don't accumulate forever

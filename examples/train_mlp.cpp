@@ -2,7 +2,7 @@
 #include "micrograd/optim.h"
 #include <iostream>
 
-using namespace mstd;
+using namespace vc;
 
 // Your very first Multi-Layer Perceptron!
 class MLP {

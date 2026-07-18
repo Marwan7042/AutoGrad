@@ -4,26 +4,26 @@
 #include <cblas.h>
 #include <type_traits>
 
-namespace mstd {
+namespace vc {
     template <typename T>
     Tensor<T>::Tensor() { 
         ctx = std::make_shared<AutogradContext<T>>(); 
     }
 
     template <typename T>
-    Tensor<T>::Tensor(mstd::vector<size_t> s, mstd::vector<size_t> st, std::shared_ptr<mstd::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda, std::shared_ptr<GPUData<T>> gd) 
+    Tensor<T>::Tensor(vc::vector<size_t> s, vc::vector<size_t> st, std::shared_ptr<vc::vector<T>> d, std::shared_ptr<AutogradContext<T>> c, bool cuda, std::shared_ptr<GPUData<T>> gd) 
         : _shape(s), _strides(st), data(d), ctx(c), is_cuda(cuda), gpu_data(gd) {}
 
     template <typename T>
-    Tensor<T>::Tensor(mstd::vector<size_t> shape) : _shape(shape) {
+    Tensor<T>::Tensor(vc::vector<size_t> shape) : _shape(shape) {
         size_t size = 1;
         for (size_t dim : _shape) size *= dim;
-        data = std::make_shared<mstd::vector<T>>(size);
+        data = std::make_shared<vc::vector<T>>(size);
         for(size_t i = 0; i < size; i++) (*data)[i] = T(); // Zero memory!
         
         ctx = std::make_shared<AutogradContext<T>>();
         
-        _strides = mstd::vector<size_t>(_shape.size());
+        _strides = vc::vector<size_t>(_shape.size());
         if(!_shape.isEmpty()) {
             size_t last_idx = _shape.size();
             _strides[last_idx-1] = 1;
@@ -52,7 +52,7 @@ namespace mstd {
     }
 
     template <typename T>
-    T& Tensor<T>::operator()(const mstd::vector<size_t>& coordinates) { 
+    T& Tensor<T>::operator()(const vc::vector<size_t>& coordinates) { 
         size_t idx = 0;
         for (size_t i = 0; i < coordinates.size(); i++) idx += coordinates[i] * _strides[i];
 
@@ -61,8 +61,8 @@ namespace mstd {
 
     template <typename T>
     Tensor<T> Tensor<T>::transpose() const {
-        mstd::vector<size_t> s(_shape.size());
-        mstd::vector<size_t> st(_strides.size());
+        vc::vector<size_t> s(_shape.size());
+        vc::vector<size_t> st(_strides.size());
 
         for (int i = _shape.size() - 1, j = 0; i >= 0; i--, j++) {
             s[j] = _shape[i];
@@ -121,7 +121,7 @@ namespace mstd {
                                                                                                                                 
         // Calculate total batches and build the result shape                                                                   
         size_t batches = 1;                                                                                                     
-        mstd::vector<size_t> result_shape(this->_shape.size());                                                                 
+        vc::vector<size_t> result_shape(this->_shape.size());                                                                 
         for (size_t i = 0; i < this->_shape.size() - 2; i++) {                                                                  
             if (this->_shape[i] != other._shape[i]) throw std::invalid_argument("Batch shapes must match.");                    
             batches *= this->_shape[i];                                                                                         
@@ -229,7 +229,7 @@ namespace mstd {
     }
 
     template <typename T>
-    void build_topo(Tensor<T>& t, mstd::unordered_map<AutogradNode<T>*, bool>& visited, mstd::vector<Tensor<T>>& topo) {
+    void build_topo(Tensor<T>& t, vc::unordered_map<AutogradNode<T>*, bool>& visited, vc::vector<Tensor<T>>& topo) {
         if (t.ctx->creator && !visited.contains(t.ctx->creator.get())) {
             visited.insert(t.ctx->creator.get(), true);
             for (Tensor<T>& parent : t.ctx->creator->get_parents()) {
@@ -245,8 +245,8 @@ namespace mstd {
         for (size_t i = 0; i < this->ctx->grad->data->size(); i++) 
             (*this->ctx->grad->data)[i] = 1.0f;
 
-        mstd::vector<Tensor<T>> topo;
-        mstd::unordered_map<AutogradNode<T>*, bool> visited;
+        vc::vector<Tensor<T>> topo;
+        vc::unordered_map<AutogradNode<T>*, bool> visited;
         build_topo(*this, visited, topo);
 
         for (int i = topo.size() - 1; i >= 0; i--) {
@@ -255,4 +255,4 @@ namespace mstd {
     }
 } 
 
-template class mstd::Tensor<float>;
+template class vc::Tensor<float>;

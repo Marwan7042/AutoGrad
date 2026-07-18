@@ -5,7 +5,7 @@
 #include <random>
 #include <cmath>
 
-namespace mstd {
+namespace vc {
     namespace nn {
         template <typename T>
         class Dense {
@@ -15,12 +15,12 @@ namespace mstd {
 
             // Initialize the Dense layer with random weights
             Dense(size_t inputs, size_t neurons) {
-                mstd::vector<size_t> w_shape(2);
+                vc::vector<size_t> w_shape(2);
                 w_shape[0] = inputs; 
                 w_shape[1] = neurons;
                 weight = Tensor<T>(w_shape);
 
-                mstd::vector<size_t> b_shape(2);
+                vc::vector<size_t> b_shape(2);
                 b_shape[0] = 1; 
                 b_shape[1] = neurons;
                 bias = Tensor<T>(b_shape);
@@ -49,8 +49,8 @@ namespace mstd {
             }
             
             // Helper to get all parameters so our Optimizer can update them
-            mstd::vector<Tensor<T>*> parameters() {
-                mstd::vector<Tensor<T>*> params(2);
+            vc::vector<Tensor<T>*> parameters() {
+                vc::vector<Tensor<T>*> params(2);
                 params[0] = &weight;
                 params[1] = &bias;
                 return params;
@@ -64,8 +64,8 @@ namespace mstd {
         public:
             MSELossNode(Tensor<T> p, Tensor<T> t, Tensor<T> o) : pred(p), target(t), out(o) {}
             
-            mstd::vector<Tensor<T>> get_parents() override {
-                mstd::vector<Tensor<T>> parents(2);
+            vc::vector<Tensor<T>> get_parents() override {
+                vc::vector<Tensor<T>> parents(2);
                 parents[0] = pred; parents[1] = target;
                 return parents;
             }
@@ -85,7 +85,7 @@ namespace mstd {
         class MSELoss {
         public:
             Tensor<T> operator()(const Tensor<T>& predictions, const Tensor<T>& targets) {
-                mstd::vector<size_t> out_shape(2); out_shape[0] = 1; out_shape[1] = 1;
+                vc::vector<size_t> out_shape(2); out_shape[0] = 1; out_shape[1] = 1;
                 Tensor<T> result(out_shape);
                 
                 float sum = 0.0f;
@@ -107,13 +107,13 @@ namespace mstd {
         class CrossEntropyLossNode : public AutogradNode<T> {
         private:
             Tensor<T> logits, target, out;
-            mstd::vector<T> softmax_probs;
+            vc::vector<T> softmax_probs;
         public:
-            CrossEntropyLossNode(Tensor<T> l, Tensor<T> t, Tensor<T> o, mstd::vector<T> probs) 
+            CrossEntropyLossNode(Tensor<T> l, Tensor<T> t, Tensor<T> o, vc::vector<T> probs) 
                 : logits(l), target(t), out(o), softmax_probs(probs) {}
             
-            mstd::vector<Tensor<T>> get_parents() override {
-                mstd::vector<Tensor<T>> parents(2);
+            vc::vector<Tensor<T>> get_parents() override {
+                vc::vector<Tensor<T>> parents(2);
                 parents[0] = logits; parents[1] = target;
                 return parents;
             }
@@ -134,11 +134,11 @@ namespace mstd {
         class CrossEntropyLoss {
         public:
             Tensor<T> operator()(const Tensor<T>& logits, const Tensor<T>& targets) {
-                mstd::vector<size_t> out_shape(2); out_shape[0] = 1; out_shape[1] = 1;
+                vc::vector<size_t> out_shape(2); out_shape[0] = 1; out_shape[1] = 1;
                 Tensor<T> result(out_shape);
                 
                 // 1. Calculate Softmax
-                mstd::vector<T> probs(logits.data->size());
+                vc::vector<T> probs(logits.data->size());
                 T max_logit = (*logits.data)[0];
                 for (size_t i = 1; i < logits.data->size(); i++) {
                     if ((*logits.data)[i] > max_logit) max_logit = (*logits.data)[i];
