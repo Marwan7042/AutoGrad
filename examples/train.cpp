@@ -1,4 +1,4 @@
-#include "micrograd/nn.h"
+#include "vecore/nn.h"
 #include <iostream>
 
 int main() {

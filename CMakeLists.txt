@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(Micrograd CXX CUDA)
+project(Vecore CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)

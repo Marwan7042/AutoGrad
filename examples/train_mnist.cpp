@@ -1,7 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../third_party/stb_image.h"
-#include "micrograd/nn.h"
-#include "micrograd/optim.h"
+#include "vecore/nn.h"
+#include "vecore/optim.h"
 #include <iostream>
 #include <fstream>
 #include <string>

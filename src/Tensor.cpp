@@ -1,4 +1,4 @@
-#include "micrograd/Tensor.h"
+#include "vecore/Tensor.h"
 #include <iostream>
 #include <stdexcept>
 #include <cblas.h>

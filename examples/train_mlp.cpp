@@ -1,5 +1,5 @@
-#include "micrograd/nn.h"
-#include "micrograd/optim.h"
+#include "vecore/nn.h"
+#include "vecore/optim.h"
 #include <iostream>
 
 using namespace vc;
