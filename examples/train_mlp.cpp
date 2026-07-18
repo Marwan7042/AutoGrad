@@ -1,5 +1,5 @@
-#include "nn.h"
-#include "optim.h"
+#include "micrograd/nn.h"
+#include "micrograd/optim.h"
 #include <iostream>
 
 using namespace mstd;

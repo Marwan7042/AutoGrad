@@ -139,7 +139,7 @@ namespace mstd{
         void backward() override {
             if (a.ctx->requires_grad) {
                 if (!a.ctx->grad) a.ctx->grad = std::make_shared<Tensor<T>>(a._shape);
-                for (size_t i = 0; i < a.ctx->grad->data->size(); i++) (*a.ctx->grad->data)[i] -= (*out.ctx->grad->data)[i];
+                for (size_t i = 0; i < a.ctx->grad->data->size(); i++) (*a.ctx->grad->data)[i] += (*out.ctx->grad->data)[i];
             }
             if (b.ctx->requires_grad) {
                 if (!b.ctx->grad) b.ctx->grad = std::make_shared<Tensor<T>>(b._shape);

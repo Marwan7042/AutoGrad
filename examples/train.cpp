@@ -1,4 +1,4 @@
-#include "nn.h"
+#include "micrograd/nn.h"
 #include <iostream>
 
 int main() {

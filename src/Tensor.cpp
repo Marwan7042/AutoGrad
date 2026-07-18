@@ -1,4 +1,4 @@
-#include "Tensor.h"
+#include "micrograd/Tensor.h"
 #include <iostream>
 #include <stdexcept>
 #include <cblas.h>
@@ -52,9 +52,9 @@ namespace mstd {
     }
 
     template <typename T>
-    T& Tensor<T>::operator()(const mstd::vector<size_t>& dims) { 
+    T& Tensor<T>::operator()(const mstd::vector<size_t>& coordinates) { 
         size_t idx = 0;
-        for (size_t i = 0; i < dims.size(); i++) idx += dims[i] * _strides[i];
+        for (size_t i = 0; i < coordinates.size(); i++) idx += coordinates[i] * _strides[i];
 
         return (*data)[idx];
     }

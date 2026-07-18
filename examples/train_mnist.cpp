@@ -1,7 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-#include "nn.h"
-#include "optim.h"
+#include "../third_party/stb_image.h"
+#include "micrograd/nn.h"
+#include "micrograd/optim.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -97,7 +97,7 @@ int main() {
     std::cout << "Scanning MNIST PNG Directory..." << std::endl;
     
     std::vector<Sample> dataset; // (Using standard vector to hold the dataset easily)
-    std::string base_dir = "../mnist_png/training/"; // Path to the images we downloaded
+    std::string base_dir = std::string(PROJECT_ROOT_DIR) + "/datasets/mnist_png/training/"; // Path to the images we downloaded
     
     // Load 1000 images of each digit (10,000 total) to train efficiently with batch size 1
     for (int label = 0; label < 10; label++) {
@@ -127,8 +127,9 @@ int main() {
     nn::CrossEntropyLoss<float> criterion;
 
     std::vector<float> history_loss, history_acc;
-
-    for (int epoch = 0; epoch <= 50; epoch++) {
+    // int patience = 3;
+    // int count_perfect = 0;
+    for (int epoch = 0; epoch <= 20; epoch++) {
         float epoch_loss = 0.0f;
         int correct = 0;
         
@@ -164,17 +165,19 @@ int main() {
         
         float avg_loss = epoch_loss / dataset.size();
         float accuracy = (float)correct / dataset.size() * 100.0f;
+        // if (accuracy == 100) count_perfect++;
         history_loss.push_back(avg_loss);
         history_acc.push_back(accuracy);
         
         std::cout << "Epoch " << epoch << " | Loss: " << avg_loss 
-                  << " | Accuracy: " << accuracy << "%" << std::endl;
+        << " | Accuracy: " << accuracy << "%" << std::endl;
+        // if (count_perfect >= patience) break;
     }
     
     // ── Evaluate on Test Set ──────────────────────────────────────────────────
     std::cout << "\nEvaluating on Unseen Test Images..." << std::endl;
     std::vector<Sample> test_dataset;
-    std::string test_dir = "../mnist_png/testing/";
+    std::string test_dir = std::string(PROJECT_ROOT_DIR) + "/datasets/mnist_png/testing/";
     
     // Load ALL 10,000 unseen images
     for (int label = 0; label < 10; label++) {
@@ -204,9 +207,9 @@ int main() {
     
     // ── Generate results.json ─────────────────────────────────────────────────
     std::cout << "\nGenerating results.json for the demo..." << std::endl;
-    fs::create_directories("../docs");
+    fs::create_directories(std::string(PROJECT_ROOT_DIR) + "/docs");
     
-    std::ofstream json_file("../docs/results.json");
+    std::ofstream json_file(std::string(PROJECT_ROOT_DIR) + "/docs/results.json");
     json_file << "{\n";
     
     json_file << "  \"history\": {\n    \"loss\": [";
