@@ -50,7 +50,7 @@ int main() {
     vc::optim::SGD<float> optimizer(model.parameters(), 0.1f);
 
     // 4. Start the Async GPU Pipeline (Train on dataset)
-    model.fit(dataset, 150, 0.1f, 8192);
+    model.fit(dataset, 150, 0.1f, 8192, 5); // 5 epochs patience early stopping
 
     return 0;
 }

@@ -75,14 +75,15 @@
                 </ul>
                 
                 <h3>The Main Training Method</h3>
-                <pre><code><span class="kw">void</span> <span class="fn">fit</span>(<span class="ty">InMemoryDataset&amp;</span> dataset, <span class="ty">int</span> epochs, <span class="ty">float</span> lr, <span class="ty">int</span> batch_size)</code></pre>
-                <p>This method implements an async GPU pipeline:</p>
+                <pre><code><span class="kw">void</span> <span class="fn">fit</span>(<span class="ty">InMemoryDataset&amp;</span> dataset, <span class="ty">int</span> epochs, <span class="ty">float</span> lr, <span class="ty">int</span> batch_size, <span class="ty">int</span> patience = <span class="nu">0</span>, <span class="ty">float</span> min_delta = <span class="nu">1e-5f</span>)</code></pre>
+                <p>This method implements an async GPU pipeline with built-in early stopping:</p>
                 <ol>
                     <li>Pre-packs dataset into contiguous pinned memory</li>
                     <li>Creates CUDA streams for double-buffered transfers</li>
                     <li>Overlaps data transfer with GPU compute</li>
                     <li>Uses fused cross-entropy kernel on GPU</li>
                     <li>Synchronizes once per epoch</li>
+                    <li><strong>Early Stopping:</strong> If <code>patience &gt; 0</code>, monitors training loss. If the loss does not improve by at least <code>min_delta</code> for <code>patience</code> epochs, training halts and the best model weights are restored.</li>
                 </ol>
             </div>
             
@@ -112,8 +113,8 @@
 <span class="cm">// Move to GPU</span>
 model.<span class="fn">to</span>(<span class="st">"cuda"</span>);
 
-<span class="cm">// Train</span>
-model.<span class="fn">fit</span>(train_dataset, <span class="nu">10</span>, <span class="nu">0.01</span>, <span class="nu">128</span>);
+<span class="cm">// Train with early stopping (patience = 5, min_delta = 0.001)</span>
+model.<span class="fn">fit</span>(train_dataset, <span class="nu">50</span>, <span class="nu">0.01</span>, <span class="nu">128</span>, <span class="nu">5</span>, <span class="nu">0.001f</span>);
 
 <span class="cm">// Save model</span>
 model.<span class="fn">save</span>(<span class="st">"mnist_model.json"</span>);</code></pre>
