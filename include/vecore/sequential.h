@@ -59,7 +59,7 @@ public:
         // Skip for now
     }
         
-    void fit(vc::data::InMemoryDataset& dataset_obj, int epochs = 150, float learning_rate = 0.1f, int batch_size = 512) {
+    void fit(vc::data::InMemoryDataset& dataset_obj, int epochs = 150, float learning_rate = 0.1f, int batch_size = 512, int patience = 0, float min_delta = 1e-5f) {
         std::vector<Sample>& train_dataset = dataset_obj.get_raw_data();
         lr = learning_rate;
         vc::optim::SGD<float> optimizer(this->parameters(), lr);
@@ -106,6 +106,11 @@ public:
             cudaMalloc(&d_epoch_correct, sizeof(int));
         }
 
+        float best_loss = 1e9f;
+        int epochs_no_improve = 0;
+        std::vector<std::vector<float>> best_weights_cpu;
+        std::vector<std::vector<float>> best_bias_cpu;
+
         for (int epoch = 0; epoch <= epochs; epoch++) {
             if (use_pipeline) {
                 cudaMemset(d_epoch_loss, 0, sizeof(float));
@@ -140,7 +145,7 @@ public:
                 size_t x_dim = train_dataset[0].image.numel();
                 size_t y_dim = train_dataset[0].target.numel();
                 
-                vc::Tensor<float> Y_cuda;
+                vc::Tensor<float> X_batch_cuda;
                 vc::Tensor<float> Y_batch_cuda;
                 
                 if (use_pipeline) {
@@ -148,7 +153,7 @@ public:
                     int next_buf = (b_i + 1) % 2;
                     
                     cudaStreamWaitEvent(0, copy_done[curr_buf], 0);
-                    Y_cuda = next_X_cuda;
+                    X_batch_cuda = next_X_cuda;
                     Y_batch_cuda = next_Y_cuda;
                     
                     if (b_i + 1 < num_batches) {
@@ -168,7 +173,7 @@ public:
                     vc::vector<size_t> x_shape(2); x_shape[0] = current_batch_size; x_shape[1] = x_dim;
                     next_X_cuda = vc::Tensor<float>::empty_gpu(x_shape);
                     cudaMemcpy(next_X_cuda.gpu_data->ptr, h_X_all + i * x_dim, current_batch_size * x_dim * sizeof(float), cudaMemcpyHostToDevice);
-                    Y_cuda = next_X_cuda;
+                    X_batch_cuda = next_X_cuda;
                     
                     vc::vector<size_t> y_shape(2); y_shape[0] = current_batch_size; y_shape[1] = y_dim;
                     next_Y_cuda = vc::Tensor<float>::empty_gpu(y_shape);
@@ -176,7 +181,7 @@ public:
                     Y_batch_cuda = next_Y_cuda;
                 }
                 
-                vc::Tensor<float> Y_pred_gpu = (*this)(Y_cuda);
+                vc::Tensor<float> Y_pred_gpu = (*this)(X_batch_cuda);
                 
                 if (use_pipeline) {
                     optimizer.zero_grad();
@@ -208,6 +213,42 @@ public:
             
             history_loss.push_back(avg_loss);
             history_acc.push_back(accuracy);
+            
+            if (patience > 0) {
+                if (avg_loss < best_loss - min_delta) {
+                    best_loss = avg_loss;
+                    epochs_no_improve = 0;
+                    
+                    best_weights_cpu.clear();
+                    best_bias_cpu.clear();
+                    for (auto& layer : layers) {
+                        std::vector<float> w(layer.weight.numel());
+                        std::vector<float> b(layer.bias.numel());
+                        if (layer.weight.is_cuda) {
+#ifdef __CUDACC__
+                            cudaMemcpy(w.data(), layer.weight.gpu_data->ptr, w.size() * sizeof(float), cudaMemcpyDeviceToHost);
+#endif
+                        } else {
+                            std::memcpy(w.data(), layer.weight.data->begin(), w.size() * sizeof(float));
+                        }
+                        if (layer.bias.is_cuda) {
+#ifdef __CUDACC__
+                            cudaMemcpy(b.data(), layer.bias.gpu_data->ptr, b.size() * sizeof(float), cudaMemcpyDeviceToHost);
+#endif
+                        } else {
+                            std::memcpy(b.data(), layer.bias.data->begin(), b.size() * sizeof(float));
+                        }
+                        best_weights_cpu.push_back(w);
+                        best_bias_cpu.push_back(b);
+                    }
+                } else {
+                    epochs_no_improve++;
+                    if (epochs_no_improve >= patience) {
+                        std::cout << "Early stopping triggered at epoch " << epoch << " (no improvement for " << patience << " epochs)." << std::endl;
+                        break;
+                    }
+                }
+            }
         }
         
         if (use_pipeline) {
@@ -218,6 +259,26 @@ public:
             cudaStreamDestroy(copy_stream);
             cudaEventDestroy(copy_done[0]);
             cudaEventDestroy(copy_done[1]);
+        }
+        if (patience > 0 && best_weights_cpu.size() > 0) {
+            std::cout << "Restoring best model weights (Loss: " << best_loss << ")" << std::endl;
+            for (size_t l = 0; l < layers.size(); l++) {
+                if (layers[l].weight.is_cuda) {
+#ifdef __CUDACC__
+                    cudaMemcpy(layers[l].weight.gpu_data->ptr, best_weights_cpu[l].data(), best_weights_cpu[l].size() * sizeof(float), cudaMemcpyHostToDevice);
+#endif
+                } else {
+                    std::memcpy(layers[l].weight.data->begin(), best_weights_cpu[l].data(), best_weights_cpu[l].size() * sizeof(float));
+                }
+                
+                if (layers[l].bias.is_cuda) {
+#ifdef __CUDACC__
+                    cudaMemcpy(layers[l].bias.gpu_data->ptr, best_bias_cpu[l].data(), best_bias_cpu[l].size() * sizeof(float), cudaMemcpyHostToDevice);
+#endif
+                } else {
+                    std::memcpy(layers[l].bias.data->begin(), best_bias_cpu[l].data(), best_bias_cpu[l].size() * sizeof(float));
+                }
+            }
         }
         std::free(h_X_all);
         std::free(h_Y_all);

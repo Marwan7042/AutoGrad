@@ -6,6 +6,9 @@
 #include <stdexcept>
 #include <memory>
 #include <string>
+#include <vector>
+#include <unordered_map>
+#include <mutex>
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
@@ -81,15 +84,22 @@ namespace vc{
 
         // Prints the shape, strides, and actual data contents of the tensor to standard output.
         void print() const;
+        
+        // Returns the scalar value of a 1-element tensor.
+        T item() const {
+            if (numel() != 1) throw std::runtime_error("item() only valid for scalar tensors");
+            return this->is_cuda ? (*this->to("cpu").data)[0] : (*this->data)[0];
+        }
     };
 
-    #include <unordered_map>
-    #include <vector>
+
 
     template <typename T>
     struct CachingAllocator {
         static std::unordered_map<size_t, std::vector<T*>> free_blocks;
+        static std::mutex mtx;
         static T* allocate(size_t size) {
+            std::lock_guard<std::mutex> lock(mtx);
             auto& blocks = free_blocks[size];
             if (!blocks.empty()) {
                 T* ptr = blocks.back();
@@ -101,11 +111,14 @@ namespace vc{
             return ptr;
         }
         static void free(T* ptr, size_t size) {
+            std::lock_guard<std::mutex> lock(mtx);
             free_blocks[size].push_back(ptr);
         }
     };
     template <typename T> 
     inline std::unordered_map<size_t, std::vector<T*>> CachingAllocator<T>::free_blocks;
+    template <typename T> 
+    inline std::mutex CachingAllocator<T>::mtx;
 
     template <typename T>
     struct GPUData {
@@ -265,7 +278,7 @@ namespace vc{
                 }
                 Tensor<T> reduced = reduce_grad(b, *out_ctx_shared->grad);
                 // Subtraction flips the gradient sign for the right operand
-                for (size_t i = 0; i < b.ctx->grad->numel(); i++) (*b.ctx->grad->data)[i] -= (*reduced.data)[i];
+                *(b.ctx->grad) = *(b.ctx->grad) - reduced;
             }
         }
     };

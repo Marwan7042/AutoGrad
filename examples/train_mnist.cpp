@@ -21,7 +21,8 @@ Sequential build_model() {
     return Sequential({
         vc::nn::Dense<float>(784, 2048, "relu"),
         vc::nn::Dense<float>(2048, 1024, "relu"),
-        vc::nn::Dense<float>(1024, 10, "none")
+        vc::nn::Dense<float>(1024, 512, "relu"),
+        vc::nn::Dense<float>(512, 10, "none")
     });
 }
 
@@ -118,7 +119,7 @@ int main() {
     std::cout << "\nTraining..." << std::endl;
     auto start_time = std::chrono::high_resolution_clock::now();
     
-    model.fit(dataset, 150, 0.1f, 8192);
+    model.fit(dataset, 500, 0.3f, 8192, 5);
     
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> training_duration = end_time - start_time;

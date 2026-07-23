@@ -174,7 +174,8 @@ loss.<span class="fn">backward</span>();
     
     <span class="cm">// 5. Inference (Evaluation)</span>
     <span class="ty">auto</span> predictions <span class="op">=</span> model.<span class="fn">forward</span>(X);
-    <span class="kw">std::</span><span class="ty">cout</span> <span class="op">&lt;&lt;</span> <span class="st">"Predictions: "</span> <span class="op">&lt;&lt;</span> predictions.<span class="fn">to_string</span>() <span class="op">&lt;&lt;</span> <span class="kw">std::</span><span class="ty">endl</span>;
+    <span class="kw">std::</span><span class="ty">cout</span> <span class="op">&lt;&lt;</span> <span class="st">"Predictions: "</span> <span class="op">&lt;&lt;</span> <span class="kw">std::</span><span class="ty">endl</span>;
+    predictions.<span class="fn">print</span>();
     
     <span class="kw">return</span> <span class="nu">0</span>;
 }</code></pre>

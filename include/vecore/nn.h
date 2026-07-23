@@ -95,9 +95,10 @@ namespace vc {
                     Tensor<T> zero_grad(pred._shape);
                     pred.ctx->grad = std::make_shared<Tensor<T>>(pred.is_cuda ? zero_grad.to("cuda") : zero_grad);
                 }
+                T out_grad_val = out_ctx_shared->grad->item();
                 for (size_t i = 0; i < pred.ctx->grad->numel(); i++) {
                     // The derivative of (pred - target)^2 is 2 * (pred - target)
-                    (*pred.ctx->grad->data)[i] += 2.0f * ((*pred.data)[i] - (*target.data)[i]) * (*out_ctx_shared->grad->data)[0];
+                    (*pred.ctx->grad->data)[i] += 2.0f * ((*pred.data)[i] - (*target.data)[i]) * out_grad_val;
                 }
             }
         }
@@ -151,8 +152,9 @@ namespace vc {
                 }
                 
                 size_t batch_size = logits._shape.size() > 1 ? logits._shape[0] : 1;
+                T out_grad_val = out_ctx_shared->grad->item();
                 for (size_t i = 0; i < logits.ctx->grad->numel(); i++) {
-                    (*logits.ctx->grad->data)[i] += ((softmax_probs[i] - (*target.data)[i]) / batch_size) * (*out_ctx_shared->grad->data)[0];
+                    (*logits.ctx->grad->data)[i] += ((softmax_probs[i] - (*target.data)[i]) / batch_size) * out_grad_val;
                 }
             }
         }

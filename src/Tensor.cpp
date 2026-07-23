@@ -611,41 +611,33 @@ __global__ void cuda_cross_entropy_metrics_kernel(const float* logits, const flo
         } else {
             result = Tensor<T>(res_shape); // Creates zeroed tensor!
         
-            vc::vector<size_t> res_coords(res_shape.size());
-            for(size_t i=0; i<res_coords.size(); i++) res_coords[i]=0;
-            vc::vector<size_t> curr_coords(this->_shape.size());
-            for(size_t i=0; i<curr_coords.size(); i++) curr_coords[i]=0;
-            
-            for (size_t i = 0; i < this->numel(); i++) {
-            // Find coordinate in the result shape
-            size_t res_idx = 0;
+            vc::vector<size_t> out_strides(this->_shape.size(), 0);
             size_t res_dim_idx = 0;
             for (size_t d = 0; d < this->_shape.size(); d++) {
-                if (sum_dim[d]) {
-                    if (keepdim) {
-                        res_coords[res_dim_idx] = 0;
-                        res_dim_idx++;
-                    }
-                } else {
-                    res_coords[res_dim_idx] = curr_coords[d];
+                if (!sum_dim[d]) {
+                    out_strides[d] = result._strides[res_dim_idx];
+                    res_dim_idx++;
+                } else if (keepdim) {
                     res_dim_idx++;
                 }
             }
-            
-            // Calculate flat index in result
-            for(size_t d = 0; d < res_shape.size(); d++) {
-                res_idx += res_coords[d] * result._strides[d];
+
+            vc::vector<size_t> curr_coords(this->_shape.size(), 0);
+            size_t res_idx = 0;
+            for (size_t i = 0; i < this->numel(); i++) {
+                (*result.data)[res_idx] += (*this->data)[i];
+                
+                // Advance original coordinates and efficiently update res_idx
+                for (int d = (int)this->_shape.size() - 1; d >= 0; d--) {
+                    curr_coords[d]++;
+                    if (curr_coords[d] < this->_shape[d]) {
+                        res_idx += out_strides[d];
+                        break;
+                    }
+                    curr_coords[d] = 0;
+                    res_idx -= out_strides[d] * (this->_shape[d] - 1);
+                }
             }
-            
-            (*result.data)[res_idx] += (*this->data)[i];
-            
-            // Advance original coordinates
-            for (int d = (int)this->_shape.size() - 1; d >= 0; d--) {
-                curr_coords[d]++;
-                if (curr_coords[d] < this->_shape[d]) break;
-                curr_coords[d] = 0;
-            }
-        }
         }
         
         return result;
