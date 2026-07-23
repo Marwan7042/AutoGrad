@@ -53,7 +53,10 @@
             <div class="breadcrumb">Docs > Core API > Sequential</div>
             <h1>Sequential — The Model Container</h1>
             
-            <p><strong>Overview:</strong> High-level container that chains Dense layers and provides a complete training pipeline with async GPU execution.</p>
+            <p>
+                As you build deeper networks, managing individual layers, passing outputs between them, and aggregating parameters for the optimizer quickly becomes tedious. 
+                The <code>Sequential</code> container solves this. Inspired by PyTorch's <code>nn.Sequential</code>, it takes a list of layers, links them together, and acts as a single model. Beyond just being a container, it provides a highly optimized, asynchronous training pipeline out of the box.
+            </p>
             
             <div class="api-card">
                 <h2>Constructor</h2>

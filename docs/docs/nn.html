@@ -52,10 +52,15 @@
 
             <div class="breadcrumb">Docs > Core API > Dense Layer</div>
             <h1>Neural Network Layers</h1>
+            <p>
+                In deep learning, layers are the building blocks that transform your data. While you <em>could</em> do all the matrix multiplications manually using Vecore's Tensor API, the <code>vc::nn</code> namespace provides a clean, object-oriented way to define these transformations. Each layer automatically manages its own trainable weights and biases.
+            </p>
             
             <div class="api-card">
                 <h2><code><span class="kw">vc::nn::</span>Dense&lt;T&gt;</code> — Fully Connected Layer</h2>
-                <p>Forward: Y = (X × W) + B, optional ReLU</p>
+                <p>
+                    The <code>Dense</code> layer (also known as a linear or fully-connected layer) applies a linear transformation to the incoming data: <code>Y = (X × W) + B</code>. After the transformation, it can optionally apply a non-linear activation function like ReLU or Sigmoid.
+                </p>
                 
                 <h3>Constructor</h3>
                 <pre><code><span class="fn">Dense</span>(<span class="ty">size_t</span> inputs, <span class="ty">size_t</span> neurons, <span class="ty">std::string</span> activation = <span class="st">"none"</span>)</code></pre>
@@ -74,7 +79,9 @@
             </div>
 
             <h2>Loss Functions</h2>
-            
+            <p>
+                To teach your network, you need to measure how wrong it is. Loss functions compare your network's predictions against the true labels and return a single scalar value. Calling <code>.backward()</code> on this value is what kicks off the learning process.
+            </p>
             <div class="api-card">
                 <h3><code><span class="kw">vc::nn::</span>MSELoss&lt;T&gt;</code> — Mean Squared Error</h3>
                 <ul>

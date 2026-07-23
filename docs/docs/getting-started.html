@@ -90,29 +90,91 @@
 <span class="kw">make</span> -j$(nproc)</code></pre>
             </div>
 
-            <h2>Your First Neural Network (Quick Start)</h2>
-            <p>Here's a complete, minimal example that creates a 2-layer MLP, creates dummy data, runs forward pass, computes loss, and does backward:</p>
+            <h2>1. Preparing the Data</h2>
+            <p>Deep learning begins with data. In Vecore, whether you're working with images, text embeddings, or audio waveforms, everything is represented as a <code>Tensor</code>. For this tutorial, let's create a synthetic dataset to train a model on a classic non-linear problem: the XOR gate.</p>
+            <div class="code-block">
+<pre><code><span class="cm">// 1. Preparing the Data (XOR Problem)</span>
+<span class="cm">// X has shape {4, 2} (4 examples, 2 features)</span>
+<span class="ty">auto</span> X <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">4</span>, <span class="nu">2</span>});
+X.<span class="fn">set_data</span>({<span class="nu">0</span>, <span class="nu">0</span>,   <span class="nu">0</span>, <span class="nu">1</span>,   <span class="nu">1</span>, <span class="nu">0</span>,   <span class="nu">1</span>, <span class="nu">1</span>});
 
+<span class="cm">// y has shape {4, 1} (4 labels)</span>
+<span class="ty">auto</span> y <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">4</span>, <span class="nu">1</span>});
+y.<span class="fn">set_data</span>({<span class="nu">0</span>,      <span class="nu">1</span>,      <span class="nu">1</span>,      <span class="nu">0</span>});
+
+<span class="cm">// Move data to GPU for blazing fast training</span>
+X <span class="op">=</span> X.<span class="fn">to</span>(<span class="st">"cuda"</span>);
+y <span class="op">=</span> y.<span class="fn">to</span>(<span class="st">"cuda"</span>);</code></pre>
+            </div>
+
+            <h2>2. The Manual Way: Building Layers</h2>
+            <p>Before introducing abstractions, let's see how a neural network operates under the hood. A neural network is just a sequence of linear transformations and non-linear activations. Let's create two dense (fully-connected) layers manually.</p>
+            <div class="code-block">
+<pre><code><span class="cm">// Layer 1: 2 inputs -> 8 hidden neurons, ReLU activation</span>
+<span class="kw">vc::nn::</span><span class="ty">Dense</span>&lt;<span class="ty">float</span>&gt; layer1(<span class="nu">2</span>, <span class="nu">8</span>, <span class="st">"relu"</span>);
+
+<span class="cm">// Layer 2: 8 hidden neurons -> 1 output neuron, Sigmoid for binary classification</span>
+<span class="kw">vc::nn::</span><span class="ty">Dense</span>&lt;<span class="ty">float</span>&gt; layer2(<span class="nu">8</span>, <span class="nu">1</span>, <span class="st">"sigmoid"</span>);
+
+<span class="cm">// Move parameters to the same device as our data</span>
+layer1.<span class="fn">to</span>(<span class="st">"cuda"</span>);
+layer2.<span class="fn">to</span>(<span class="st">"cuda"</span>);</code></pre>
+            </div>
+
+            <h2>3. Forward Pass & Backpropagation</h2>
+            <p>Vecore's autograd engine automatically tracks operations. When you pass <code>X</code> through your layers, Vecore builds a computational graph in the background. When you compute the loss and call <code>.backward()</code>, Vecore traverses the graph backward, automatically calculating the gradients for every weight.</p>
+            <div class="code-block">
+<pre><code><span class="cm">// Forward Pass: Pass input through layers</span>
+<span class="ty">auto</span> hidden <span class="op">=</span> layer1.<span class="fn">forward</span>(X);
+<span class="ty">auto</span> out <span class="op">=</span> layer2.<span class="fn">forward</span>(hidden);
+
+<span class="cm">// Compute Mean Squared Error Loss</span>
+<span class="ty">auto</span> diff <span class="op">=</span> out <span class="op">-</span> y;
+<span class="ty">auto</span> loss <span class="op">=</span> (diff <span class="op">*</span> diff).<span class="fn">mean</span>();
+
+<span class="cm">// Backpropagate to compute gradients</span>
+loss.<span class="fn">backward</span>();
+
+<span class="kw">std::</span><span class="ty">cout</span> <span class="op">&lt;&lt;</span> <span class="st">"Loss: "</span> <span class="op">&lt;&lt;</span> loss.<span class="fn">item</span>() <span class="op">&lt;&lt;</span> <span class="kw">std::</span><span class="ty">endl</span>;</code></pre>
+            </div>
+
+            <h2>4. Abstracting it away: The Sequential API</h2>
+            <p>Doing this manually for a massive 50-layer architecture like ResNet would be a nightmare. This is why Vecore introduces the <code>Sequential</code> model and Optimizers. They abstract away the tedious parameter management and weight updates.</p>
+            <p>Here is the exact same training loop, but using the idiomatic, PyTorch-like API:</p>
             <div class="code-block">
 <pre><code><span class="cm">#include "vecore/nn.h"</span>
 <span class="cm">#include "vecore/optim.h"</span>
 <span class="cm">#include "vecore/sequential.h"</span>
 
 <span class="ty">int</span> <span class="fn">main</span>() {
-    <span class="cm">// Build a simple neural network</span>
+    <span class="cm">// 1. Data Preparation</span>
+    <span class="ty">auto</span> X <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">4</span>, <span class="nu">2</span>}).<span class="fn">to</span>(<span class="st">"cuda"</span>);
+    <span class="ty">auto</span> y <span class="op">=</span> <span class="kw">vc::</span><span class="ty">Tensor</span>&lt;<span class="ty">float</span>&gt;({<span class="nu">4</span>, <span class="nu">1</span>}).<span class="fn">to</span>(<span class="st">"cuda"</span>);
+    X.<span class="fn">set_data</span>({<span class="nu">0</span>,<span class="nu">0</span>, <span class="nu">0</span>,<span class="nu">1</span>, <span class="nu">1</span>,<span class="nu">0</span>, <span class="nu">1</span>,<span class="nu">1</span>});
+    y.<span class="fn">set_data</span>({<span class="nu">0</span>,   <span class="nu">1</span>,   <span class="nu">1</span>,   <span class="nu">0</span>});
+
+    <span class="cm">// 2. Build the Model cleanly</span>
     <span class="ty">Sequential</span> model({
-        vc::nn::<span class="ty">Dense</span>&lt;<span class="ty">float</span>&gt;(<span class="nu">784</span>, <span class="nu">128</span>, <span class="st">"relu"</span>),
-        vc::nn::<span class="ty">Dense</span>&lt;<span class="ty">float</span>&gt;(<span class="nu">128</span>, <span class="nu">10</span>, <span class="st">"none"</span>)
+        <span class="kw">vc::nn::</span><span class="ty">Dense</span>&lt;<span class="ty">float</span>&gt;(<span class="nu">2</span>, <span class="nu">8</span>, <span class="st">"relu"</span>),
+        <span class="kw">vc::nn::</span><span class="ty">Dense</span>&lt;<span class="ty">float</span>&gt;(<span class="nu">8</span>, <span class="nu">1</span>, <span class="st">"sigmoid"</span>)
     });
-    
-    <span class="cm">// Move to GPU</span>
     model.<span class="fn">to</span>(<span class="st">"cuda"</span>);
     
-    <span class="cm">// Create optimizer</span>
-    vc::optim::<span class="ty">SGD</span>&lt;<span class="ty">float</span>&gt; optimizer(model.<span class="fn">parameters</span>(), <span class="nu">0.01</span>);
+    <span class="cm">// 3. Create an Optimizer</span>
+    <span class="kw">vc::optim::</span><span class="ty">SGD</span>&lt;<span class="ty">float</span>&gt; optimizer(model.<span class="fn">parameters</span>(), <span class="nu">0.1</span>);
     
-    <span class="cm">// Training loop</span>
-    <span class="cm">// ... (see Sequential docs for full training)</span>
+    <span class="cm">// 4. The Training Loop</span>
+    <span class="kw">for</span>(<span class="ty">int</span> epoch <span class="op">=</span> <span class="nu">0</span>; epoch <span class="op">&lt;</span> <span class="nu">1000</span>; epoch<span class="op">++</span>) {
+        optimizer.<span class="fn">zero_grad</span>();               <span class="cm">// Clear old gradients</span>
+        <span class="ty">auto</span> out <span class="op">=</span> model.<span class="fn">forward</span>(X);         <span class="cm">// Forward pass</span>
+        <span class="ty">auto</span> loss <span class="op">=</span> <span class="kw">vc::nn::</span><span class="fn">mse_loss</span>(out, y);<span class="cm">// Compute loss</span>
+        loss.<span class="fn">backward</span>();                     <span class="cm">// Backpropagate</span>
+        optimizer.<span class="fn">step</span>();                    <span class="cm">// Update weights</span>
+    }
+    
+    <span class="cm">// 5. Inference (Evaluation)</span>
+    <span class="ty">auto</span> predictions <span class="op">=</span> model.<span class="fn">forward</span>(X);
+    <span class="kw">std::</span><span class="ty">cout</span> <span class="op">&lt;&lt;</span> <span class="st">"Predictions: "</span> <span class="op">&lt;&lt;</span> predictions.<span class="fn">to_string</span>() <span class="op">&lt;&lt;</span> <span class="kw">std::</span><span class="ty">endl</span>;
     
     <span class="kw">return</span> <span class="nu">0</span>;
 }</code></pre>

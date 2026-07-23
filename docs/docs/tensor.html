@@ -62,15 +62,14 @@
                 <section class="content-section" id="overview">
                     <h2>Overview</h2>
                     <p>
-                        The <code>Tensor</code> class is the fundamental building block of Vecore. Every piece of data — images, weights, gradients — lives inside a Tensor. It supports:
+                        If you've ever used NumPy or PyTorch, the <code>Tensor</code> class will feel right at home. It is the absolute core of Vecore. You can think of a Tensor as a multi-dimensional array on steroids: not only does it store your raw data (like images, audio, or text embeddings), but it also remembers <em>how</em> it was created.
                     </p>
-                    <ul>
-                        <li>Arbitrary-dimensional shapes</li>
-                        <li>Automatic CPU ↔ GPU transfers</li>
-                        <li>Built-in automatic differentiation (autograd)</li>
-                        <li>Matrix multiplication via cuBLAS (GPU) or OpenBLAS (CPU)</li>
-                        <li>Broadcasting for element-wise operations</li>
-                    </ul>
+                    <p>
+                        Every time you add, multiply, or pass a Tensor through a layer, Vecore quietly builds a computational graph in the background. When it's time to learn, a single call to <code>.backward()</code> traverses this graph backwards, calculating the exact gradients needed to update your weights.
+                    </p>
+                    <p>
+                        Beyond autograd, the Tensor seamlessly bridges the gap between your CPU and GPU. With a simple <code>.to("cuda")</code>, your data is transferred to the GPU, and subsequent operations automatically route through heavily optimized cuBLAS Tensor Cores.
+                    </p>
                 </section>
 
                 <section class="content-section" id="constructors">
